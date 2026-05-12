@@ -1,0 +1,23 @@
+# Build outputs
+bin/
+obj/
+
+# dotnet
+*.user
+*.suo
+.vs/
+
+# Logs
+*.log
+
+# Temp/docs files (AI generated, not needed in repo)
+frontend-files--*
+*.md
+!README.md
+*.txt
+SETUP-SUMMARY.txt
+DO-THIS-NOW.txt
+setup-music-frontend.bat
+setup-music-frontend.ps1
+Backend/
+Frontend/
