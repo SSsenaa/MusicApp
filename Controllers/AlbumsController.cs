@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using MusicApp.API.Data;
 using MusicApp.API.Models;
@@ -16,7 +17,7 @@ namespace MusicApp.API.Controllers
             _context = context;
         }
 
-        // 1. Listeleme (Şarkıcı adıyla birlikte)
+        // GET: api/albums — Şarkıcı adıyla birlikte listele (JOIN)
         [HttpGet]
         public async Task<IActionResult> GetAlbums()
         {
@@ -26,48 +27,89 @@ namespace MusicApp.API.Controllers
                     singer => singer.SingerId,
                     (album, singer) => new
                     {
-                        albumId = album.AlbumId,
-                        title = album.Title,
-                        year = album.Year,
-                        singerName = singer.Name // Kural gereği ID yerine İsim dönüyoruz
+                        albumId   = album.AlbumId,
+                        title     = album.Title,
+                        year      = album.Year,
+                        singerId  = singer.SingerId,
+                        singerName = singer.Name
                     })
                 .ToListAsync();
 
             return Ok(albums);
         }
 
-        // 2. Ekleme (sp_AddAlbum Prosedürü ile)
+        // POST: api/albums — sp_AddAlbum stored procedure ile ekle
         [HttpPost]
-        public async Task<IActionResult> AddAlbum(Album album)
+        public async Task<IActionResult> AddAlbum([FromBody] Album album)
         {
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC sp_AddAlbum @title = {0}, @year = {1}, @singerid = {2}",
-                album.Title, album.Year, album.SingerId);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            return Ok();
+            if (string.IsNullOrWhiteSpace(album.Title))
+                return BadRequest(new { message = "Title is required." });
+
+            if (album.SingerId == null)
+                return BadRequest(new { message = "SingerId is required." });
+
+            try
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_AddAlbum @title = {0}, @year = {1}, @singerid = {2}",
+                    album.Title, album.Year ?? (object)DBNull.Value, album.SingerId);
+
+                return Ok(new { message = "Album added successfully." });
+            }
+            catch (SqlException ex)
+            {
+                return StatusCode(500, new { message = "SQL error: " + ex.Message });
+            }
         }
 
-        // 3. Güncelleme
+        // PUT: api/albums/{id} — Güncelle
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAlbum(int id, Album album)
+        public async Task<IActionResult> UpdateAlbum(int id, [FromBody] Album album)
         {
-            if (id != album.AlbumId) return BadRequest();
-            
-            _context.Entry(album).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return Ok();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var existing = await _context.ALBUM.FindAsync(id);
+            if (existing == null)
+                return NotFound(new { message = $"Album with id={id} not found." });
+
+            existing.Title = album.Title;
+            existing.Year = album.Year;
+            existing.SingerId = album.SingerId;
+            // SingerName alanı Ignored olduğundan güncellenmez
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(existing);
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(500, new { message = "Database error: " + ex.InnerException?.Message ?? ex.Message });
+            }
         }
 
-        // 4. Silme
+        // DELETE: api/albums/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAlbum(int id)
         {
             var album = await _context.ALBUM.FindAsync(id);
-            if (album == null) return NotFound();
-            
-            _context.ALBUM.Remove(album);
-            await _context.SaveChangesAsync();
-            return Ok();
+            if (album == null)
+                return NotFound(new { message = $"Album with id={id} not found." });
+
+            try
+            {
+                _context.ALBUM.Remove(album);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Album deleted." });
+            }
+            catch (DbUpdateException ex)
+            {
+                return StatusCode(500, new { message = "Database error: " + ex.InnerException?.Message ?? ex.Message });
+            }
         }
     }
 }

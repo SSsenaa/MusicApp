@@ -18,3 +18,9 @@ setup-music-frontend.bat
 setup-music-frontend.ps1
 Backend/
 Frontend/
+
+# Node / Frontend
+node_modules/
+music-frontend/node_modules/
+music-frontend/dist/
+music-frontend/.vite/

@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MusicApp.API.Models
 {
     public class Singer
     {
         public int SingerId { get; set; }
-        public string Name { get; set; }
-        public string Style { get; set; }
+
+        [Required(ErrorMessage = "Name is required")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Style is required")]
+        public string Style { get; set; } = string.Empty;
     }
 }

@@ -12,17 +12,35 @@ namespace MusicApp.API.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Singer>().ToTable("SINGER").HasKey(s => s.SingerId);
-            modelBuilder.Entity<Singer>().Property(s => s.SingerId).HasColumnName("singerID");
-            modelBuilder.Entity<Singer>().Property(s => s.Name).HasColumnName("name");
-            modelBuilder.Entity<Singer>().Property(s => s.Style).HasColumnName("style");
+            // SINGER tablosu
+            modelBuilder.Entity<Singer>(entity =>
+            {
+                entity.ToTable("SINGER");
+                entity.HasKey(s => s.SingerId);
+                entity.Property(s => s.SingerId).HasColumnName("singerID");
+                entity.Property(s => s.Name).HasColumnName("name").IsRequired();
+                entity.Property(s => s.Style).HasColumnName("style").IsRequired();
+            });
 
-            modelBuilder.Entity<Album>().ToTable("ALBUM").HasKey(a => a.AlbumId);
-            modelBuilder.Entity<Album>().Property(a => a.AlbumId).HasColumnName("albumID");
-            modelBuilder.Entity<Album>().Property(a => a.Title).HasColumnName("title");
-            modelBuilder.Entity<Album>().Property(a => a.Year).HasColumnName("year");
-            modelBuilder.Entity<Album>().Property(a => a.SingerId).HasColumnName("singerID");
-            modelBuilder.Entity<Album>().Ignore(a => a.SingerName);
+            // ALBUM tablosu
+            modelBuilder.Entity<Album>(entity =>
+            {
+                entity.ToTable("ALBUM");
+                entity.HasKey(a => a.AlbumId);
+                entity.Property(a => a.AlbumId).HasColumnName("albumID");
+                entity.Property(a => a.Title).HasColumnName("title").IsRequired();
+                entity.Property(a => a.Year).HasColumnName("year");
+                entity.Property(a => a.SingerId).HasColumnName("singerID");
+
+                // SingerName DB'de bir sütun değil, Join ile hesaplanan alan
+                entity.Ignore(a => a.SingerName);
+
+                // Foreign key ilişkisi
+                entity.HasOne<Singer>()
+                      .WithMany()
+                      .HasForeignKey(a => a.SingerId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }
